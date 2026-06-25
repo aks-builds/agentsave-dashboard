@@ -1,30 +1,22 @@
-from __future__ import annotations
-
+import os
 from contextlib import asynccontextmanager
-
-import aiosqlite
 from fastapi import FastAPI
-
-from agentsave_dashboard.config import get_settings
-from agentsave_dashboard.database import init_db
-from agentsave_dashboard.routers import events, metrics, tokens, billing
+from agentsave_dashboard import __version__
+from agentsave_dashboard.db import init_db
+from agentsave_dashboard.routers import health, events, runs, metrics, billing
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    settings = get_settings()
-    async with aiosqlite.connect(settings.database_url) as db:
-        await init_db(db)
+    await init_db()
     yield
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="AgentSave Dashboard API", version="0.1.0", lifespan=lifespan)
-    app.include_router(events.router)
-    app.include_router(metrics.router)
-    app.include_router(tokens.router)
-    app.include_router(billing.router)
+    app = FastAPI(title="AgentSave Dashboard", version=__version__, lifespan=lifespan)
+    for router in [health.router, events.router, runs.router, metrics.router, billing.router]:
+        app.include_router(router)
+    if os.environ.get("AGENTSAVE_TEST_MODE") == "1":
+        from agentsave_dashboard.routers import test_utils
+        app.include_router(test_utils.router)
     return app
-
-
-app = create_app()

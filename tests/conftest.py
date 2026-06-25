@@ -1,33 +1,24 @@
+import os
 import pytest
-import pytest_asyncio
-import aiosqlite
-from httpx import AsyncClient, ASGITransport
 
-from agentsave_dashboard.database import init_db, get_db
+os.environ["AGENTSAVE_TEST_MODE"] = "1"
+
+from httpx import AsyncClient, ASGITransport
+import agentsave_dashboard.db as _db_module
 from agentsave_dashboard.main import create_app
 
 
-@pytest_asyncio.fixture
-async def db():
-    """In-memory aiosqlite connection with schema applied."""
-    async with aiosqlite.connect(":memory:") as conn:
-        conn.row_factory = aiosqlite.Row
-        await conn.execute("PRAGMA foreign_keys = ON")
-        await init_db(conn)
-        yield conn
+@pytest.fixture(autouse=True)
+def fresh_test_db(tmp_path):
+    """Give every test its own temp DB file so connections share state."""
+    db_path = str(tmp_path / "test.db")
+    _db_module._db_path_override = db_path
+    yield db_path
+    _db_module._db_path_override = None
 
 
-@pytest_asyncio.fixture
-async def client(db):
-    """ASGI test client with DB dependency overridden to use in-memory DB."""
+@pytest.fixture
+async def client(fresh_test_db):
     app = create_app()
-
-    async def override_get_db():
-        yield db
-
-    app.dependency_overrides[get_db] = override_get_db
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
