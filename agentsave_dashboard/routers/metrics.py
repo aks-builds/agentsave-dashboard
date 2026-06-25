@@ -1,27 +1,20 @@
-from __future__ import annotations
-
-from typing import Annotated, Literal
-
-import aiosqlite
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-
-from agentsave_dashboard.auth import require_jwt
-from agentsave_dashboard.config import get_settings
-from agentsave_dashboard.database import get_db
-from agentsave_dashboard.models import MetricsResponse
-from agentsave_dashboard.services.metrics_service import compute_metrics
+from fastapi import APIRouter, Depends, Query
+from agentsave_dashboard.auth import require_auth
+from agentsave_dashboard.db import get_db
+from agentsave_dashboard.services.aggregator import get_metrics, get_token_buckets
 
 router = APIRouter()
 
-_VALID_PERIODS = {"7d", "30d", "90d"}
+
+@router.get("/api/metrics")
+async def metrics(_: str = Depends(require_auth)):
+    async with get_db() as db:
+        return await get_metrics(db)
 
 
-@router.get("/api/metrics", response_model=MetricsResponse)
-async def get_metrics(
-    project_id: str,
-    period: str = Query(..., pattern="^(7d|30d|90d)$"),
-    db: Annotated[aiosqlite.Connection, Depends(get_db)] = None,
-    _jwt: Annotated[dict, Depends(require_jwt)] = None,
-) -> MetricsResponse:
-    settings = get_settings()
-    return await compute_metrics(project_id, period, db, settings.cost_per_token_usd)
+@router.get("/api/tokens")
+async def tokens(window: str = Query("30d"), _: str = Depends(require_auth)):
+    days = int(window.replace("d", "")) if window.endswith("d") else 30
+    async with get_db() as db:
+        buckets = await get_token_buckets(db, days=days)
+    return {"buckets": buckets, "window": window}
