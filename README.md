@@ -1,12 +1,13 @@
-> **Part of AgentSave** — This is the self-hosted backend component of [AgentSave](https://github.com/aks-builds/agentsave), the AI agent cost-efficiency platform. Use it only if you want a local dashboard to track your agent runs and token savings. The SDK ([agentsave](https://github.com/aks-builds/agentsave)) works independently without this backend — you do not need this repo just to use the SDK.
+﻿> **Part of AgentSave** â€” This is the self-hosted backend component of [AgentSave](https://github.com/aks-builds/agentsave), the AI agent cost-efficiency platform. Use it only if you want a local dashboard to track your agent runs and token savings. The SDK ([agentsave](https://github.com/aks-builds/agentsave)) works independently without this backend â€” you do not need this repo just to use the SDK.
 
-# agentsave-dashboard — Self-Hosted Dashboard Backend
+# agentsave-dashboard â€” Self-Hosted Dashboard Backend
 
 [![CI](https://github.com/aks-builds/agentsave-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/aks-builds/agentsave-dashboard/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/agentsave-dashboard.svg)](https://pypi.org/project/agentsave-dashboard/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
 
-> A FastAPI + SQLite backend that receives telemetry from the AgentSave SDK and exposes cost, token, and run metrics over a local HTTP API. Runs entirely on your machine — no cloud account required.
+> A FastAPI + SQLite backend that receives telemetry from the AgentSave SDK and exposes cost, token, and run metrics over a local HTTP API. Runs entirely on your machine â€” no cloud account required.
 
 ---
 
@@ -15,7 +16,7 @@
 - Receives run telemetry from the `agentsave` SDK via `POST /api/events`
 - Stores per-run data (framework, model, tokens before/after, task success) in a local SQLite database
 - Serves aggregated metrics, daily token buckets, run history, and billing/tier information over a REST API
-- Validates RS256-signed JWT license keys offline against a bundled public key — no license server call, no internet required
+- Validates RS256-signed JWT license keys offline against a bundled public key â€” no license server call, no internet required
 - Enforces data retention windows per tier (7 days on Free, 90 days on Pro, 365 days on Enterprise)
 - Generates a unique `ask-xxx` API key on first run and prints it once so you can connect the SDK
 
@@ -47,7 +48,7 @@ Run: agentsave login --dashboard-url http://127.0.0.1:8000 --api-key ask-a1b2c3d
 
 ### 3. Connect the SDK
 
-In your project — wherever you installed `agentsave` — run:
+In your project â€” wherever you installed `agentsave` â€” run:
 
 ```bash
 agentsave login --dashboard-url http://127.0.0.1:8000 --api-key ask-a1b2c3d4...
@@ -98,8 +99,8 @@ All endpoints except `/api/health` require `Authorization: Bearer <api-key>`.
 
 | Parameter | Default | Range |
 |-----------|---------|-------|
-| `page` | `1` | — |
-| `per_page` | `50` | 1–200 |
+| `page` | `1` | â€” |
+| `per_page` | `50` | 1â€“200 |
 
 ### `GET /api/metrics` response shape
 
@@ -143,10 +144,10 @@ The `GET /api/billing` endpoint returns the full feature set and expiry date for
 
 | CLI flag | Environment variable | Default | Description |
 |----------|----------------------|---------|-------------|
-| `--host` | — | `127.0.0.1` | Interface to bind |
-| `--port` | — | `8000` | Port to listen on |
-| `--license-key` | — | — | RS256 JWT to activate Pro or Enterprise tier |
-| — | `AGENTSAVE_TEST_MODE` | unset | Set to `1` to mount test-only routes and use an in-memory DB |
+| `--host` | â€” | `127.0.0.1` | Interface to bind |
+| `--port` | â€” | `8000` | Port to listen on |
+| `--license-key` | â€” | â€” | RS256 JWT to activate Pro or Enterprise tier |
+| â€” | `AGENTSAVE_TEST_MODE` | unset | Set to `1` to mount test-only routes and use an in-memory DB |
 
 The database is stored at `~/.agentsave-dashboard/data.db`. There is no other configuration file.
 
@@ -155,23 +156,23 @@ The database is stored at `~/.agentsave-dashboard/data.db`. There is no other co
 ## Architecture
 
 ```
-agentsave SDK  ──POST /api/events──►  agentsave-dashboard (FastAPI)
-                                              │
-                              ┌───────────────┼───────────────┐
-                              ▼               ▼               ▼
+agentsave SDK  â”€â”€POST /api/eventsâ”€â”€â–º  agentsave-dashboard (FastAPI)
+                                              â”‚
+                              â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                              â–¼               â–¼               â–¼
                           runs table    config table    api_keys table
-                              │               │
-                              ▼               ▼
+                              â”‚               â”‚
+                              â–¼               â–¼
                          aggregator      resolve_tier()
                          (metrics,       (JWT decode,
                           tokens,         RS256 verify,
                           billing)        feature flags)
-                              │
-                              ▼
+                              â”‚
+                              â–¼
                     GET /api/metrics, /api/runs,
                     /api/tokens, /api/billing
-                              │
-                              ▼
+                              â”‚
+                              â–¼
                     agentsave-ui  (separate repo)
 ```
 
@@ -212,8 +213,8 @@ The CI badge at the top of this file must stay green. A failing matrix build blo
 
 | Repo | Purpose |
 |------|---------|
-| [aks-builds/agentsave](https://github.com/aks-builds/agentsave) | Python SDK — the core product (`pip install agentsave`) |
-| [aks-builds/agentsave-dashboard](https://github.com/aks-builds/agentsave-dashboard) | This repo — self-hosted dashboard backend |
+| [aks-builds/agentsave](https://github.com/aks-builds/agentsave) | Python SDK â€” the core product (`pip install agentsave`) |
+| [aks-builds/agentsave-dashboard](https://github.com/aks-builds/agentsave-dashboard) | This repo â€” self-hosted dashboard backend |
 | [aks-builds/agentsave-ui](https://github.com/aks-builds/agentsave-ui) | Frontend UI for the dashboard |
 | [aks-builds/agentsave-inferroute](https://github.com/aks-builds/agentsave-inferroute) | Intelligent model routing (Enterprise tier) |
 
@@ -221,4 +222,4 @@ The CI badge at the top of this file must stay green. A failing matrix build blo
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT â€” see [LICENSE](LICENSE).
