@@ -1,0 +1,102 @@
+name: Publish to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or SHA to publish from"
+        required: false
+        default: main
+
+permissions:
+  contents: write
+
+jobs:
+  publish-pypi:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag: ${{ steps.ver.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || 'main' }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Configure git identity
+        run: |
+          git config user.name "aks-builds"
+          git config user.email "its.aks@outlook.com"
+
+      - name: Resolve version from pyproject.toml
+        id: ver
+        run: |
+          VERSION=$(python -c "import tomllib; d=tomllib.load(open('pyproject.toml','rb')); print(d['project']['version'])")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION"    >> "$GITHUB_OUTPUT"
+
+      - name: Abort if tag already exists
+        run: |
+          if git rev-parse "refs/tags/${{ steps.ver.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Tag ${{ steps.ver.outputs.tag }} already exists — bump version before publishing."
+            exit 1
+          fi
+
+      - name: Install build tools
+        run: pip install build twine
+
+      - name: Build distribution
+        run: python -m build
+
+      - name: Verify public key is present in wheel
+        run: |
+          python -c "
+          import zipfile, pathlib
+          whl = list(pathlib.Path('dist').glob('*.whl'))[0]
+          with zipfile.ZipFile(whl) as z:
+              names = z.namelist()
+          key = [n for n in names if 'public.pem' in n]
+          assert key, f'public.pem missing from wheel! Files: {names}'
+          print(f'OK — public key present: {key[0]}')
+          "
+
+      - name: Publish to PyPI
+        run: twine upload dist/* --non-interactive
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+  github-release:
+    needs: [publish-pypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || 'main' }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "aks-builds"
+          git config user.email "its.aks@outlook.com"
+
+      - name: Tag and push
+        run: |
+          git tag "${{ needs.publish-pypi.outputs.tag }}"
+          git push origin "${{ needs.publish-pypi.outputs.tag }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ needs.publish-pypi.outputs.tag }}" \
+            --title "agentsave-dashboard ${{ needs.publish-pypi.outputs.tag }}" \
+            --notes "Self-hosted AgentSave dashboard backend v${{ needs.publish-pypi.outputs.version }}.
+
+Install: \`pip install agentsave-dashboard\`
+Start: \`agentsave-dashboard serve\`" \
+            --target main
